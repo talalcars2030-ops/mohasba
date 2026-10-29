@@ -1,4 +1,4 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1110"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>المحاسبة</title>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" id="tc" content="#0b1110"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>المحاسبة</title>
 <style>
 :root{--bg:#0b1110;--cd:#141c1a;--ln:#24302d;--tx:#eef3f1;--mu:#8a9a95;--gr:#22c55e;--rd:#f87171}
 *{box-sizing:border-box;margin:0}
@@ -27,11 +27,16 @@ nav button{flex:1;background:none;border:0;color:var(--mu);padding:9px 0;font:in
 .emp{text-align:center;padding:26px 10px}.emp p{margin:6px 0 14px}
 #pa{display:none;color:#000;background:#fff;padding:24px;font-family:system-ui,Tahoma,sans-serif}#pa table{width:100%;border-collapse:collapse;margin:14px 0}#pa td,#pa th{border:1px solid #bbb;padding:6px;font-size:13px;text-align:right}#pa th{background:#eee}
 @media print{body>*:not(#pa){display:none!important}#pa{display:block}body{background:#fff;padding:0}}
-</style></head><body><div id="app"></div><div id="sheet"></div><div id="toast"></div><div id="pa"></div>
+[data-th=light]{--bg:#f4f7f6;--cd:#fff;--ln:#dfe6e3;--tx:#12201b;--mu:#5d6d67;--gr:#16a34a;--rd:#dc2626}
+[data-th=light] .hero{background:linear-gradient(135deg,#d9f3e3,#fff)}[data-th=light] .av,[data-th=light] .tb.in{background:#e3f4ea}[data-th=light] .tb.out{background:#fde8e8}[data-th=light] #toast div{background:#12201b;color:#fff}[data-th=light] .bd{background:#0006}
+#lk:not(:empty){position:fixed;inset:0;background:var(--bg);z-index:50;display:grid;place-items:center;overflow:auto}.lkb{text-align:center;padding:20px}.dots{font-size:28px;letter-spacing:8px;margin:14px 0 4px;color:var(--gr)}.lkb p{min-height:24px;margin-bottom:8px}
+.kp{display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center;direction:ltr;margin-bottom:16px}.kp button{height:72px;border-radius:50%;border:1px solid var(--ln);background:var(--cd);color:var(--tx);font-size:26px;cursor:pointer}
+</style></head><body><div id="app"></div><div id="sheet"></div><div id="toast"></div><div id="pa"></div><div id="lk"></div>
 <script src="config.js"></script><script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-const $=s=>document.querySelector(s),CF=window.CFG||{},CUR=CF.CURRENCY||'ر.س',CID=CF.GOOGLE_CLIENT_ID,K='mh2',FN='المحاسبة - البيانات';
+const $=s=>document.querySelector(s),CF=window.CFG||{},CUR=CF.CURRENCY||'ر.س',K='mh2',FN='المحاسبة - البيانات';
 const SC='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+let CID=CF.GOOGLE_CLIENT_ID||localStorage.getItem('mh_cid')||'';
 let db=JSON.parse(localStorage.getItem(K)||'null')||{c:{},t:{},m:{}},S={tab:'c',cid:null,q:''},st='ok',tok,exp=0,tc,P,busy=0,again=0,tm;
 const save=()=>localStorage.setItem(K,JSON.stringify(db)),uid=()=>crypto.randomUUID(),now=()=>new Date().toISOString();
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -64,7 +69,7 @@ function vClient(){const c=db.c[S.cid];if(!c){S.cid=null;return vClients()}let r
  <div class=card><input id=qe class=in dir=auto placeholder="إدخال سريع:  500+ دفعة فاتورة 1024   أو   250- مصروف" onkeydown="if(event.key=='Enter')qk()"><small>اكتب المبلغ ثم + للإضافة أو - للسحب ثم البيان، واضغط Enter.</small></div>
  <div class=hd><h3>العمليات</h3><button class="bt o" onclick="shS()">مشاركة الكشف</button></div>`+(T.length?T.reverse().map(x=>trow(x,x.v?null:x.r)).join(''):'<p class="mu emp">لا توجد عمليات بعد</p>')}
 function vTx(){const T=Object.values(db.t).sort(asc).reverse();return head('العمليات',chip())+(T.length?T.map(x=>trow(x,null,db.c[x.c]?.name)).join(''):'<p class="mu emp">لا توجد عمليات</p>')}
-function vSet(){const m=db.m;return head('الإعدادات')+`<div class=card><h3>الحساب والمزامنة</h3>`+(m.email?`<p class=mu>متصل: <b>${esc(m.email)}</b><br>آخر مزامنة: ${m.ls?dt(m.ls):'—'}</p>${m.sid?`<a class="bt o w" target=_blank href="https://docs.google.com/spreadsheets/d/${m.sid}">فتح جدول Google Sheets</a>`:''}<button class="bt w" onclick="sync(1)">مزامنة الآن</button><button class="bt o w" onclick="lo()">تسجيل الخروج</button>`:`<p class=mu>سجّل الدخول بحساب Google ليُنشأ جدول بياناتك ويتزامن تلقائياً بين أجهزتك. لا حاجة لأي إعداد آخر.</p>${CID?'':'<p class=rd>لم يُضبط GOOGLE_CLIENT_ID في config.js</p>'}<button class="bt w" onclick="login()">تسجيل الدخول بحساب Google</button>`)+`</div><div class=card><h3>نسخ احتياطي</h3><button class="bt o w" onclick="bk()">حفظ نسخة (JSON)</button><label class="bt o w" style="display:block">استعادة نسخة<input type=file accept=.json hidden onchange="rs(this.files[0])"></label><button class="bt o w rdb" onclick="if(confirm('مسح بيانات هذا الجهاز؟ (بياناتك في Google Sheets تبقى)')){db={c:{},t:{},m:db.m};save();render()}">مسح بيانات هذا الجهاز</button></div><p class=mu style=text-align:center>الإصدار 2.0 · Google Sheets</p>`}
+function vSet(){const m=db.m;return head('الإعدادات')+`<div class=card><h3>الحساب والمزامنة</h3>`+(m.email?`<p class=mu>متصل: <b>${esc(m.email)}</b><br>آخر مزامنة: ${m.ls?dt(m.ls):'—'}</p>${m.sid?`<a class="bt o w" target=_blank href="https://docs.google.com/spreadsheets/d/${m.sid}">فتح جدول Google Sheets</a>`:''}<button class="bt w" onclick="sync(1)">مزامنة الآن</button><button class="bt o w" onclick="lo()">تسجيل الخروج</button>`:`<p class=mu>سجّل الدخول بحساب Google ليُنشأ جدول بياناتك ويتزامن تلقائياً بين أجهزتك. لا حاجة لأي إعداد آخر.</p>${CID?'':cidBox()}<button class="bt w" onclick="login()">تسجيل الدخول بحساب Google</button>`)+`</div>${secCard()}<div class=card><h3>نسخ احتياطي</h3><button class="bt o w" onclick="bk()">حفظ نسخة (JSON)</button><label class="bt o w" style="display:block">استعادة نسخة<input type=file accept=.json hidden onchange="rs(this.files[0])"></label><button class="bt o w rdb" onclick="if(confirm('مسح بيانات هذا الجهاز؟ (بياناتك في Google Sheets تبقى)')){db={c:{},t:{},m:db.m};save();render()}">مسح بيانات هذا الجهاز</button></div><p class=mu style=text-align:center>الإصدار 2.1 · Google Sheets</p>`}
 
 /* ---------- Clients & transactions ---------- */
 function nc(id){const c=id?db.c[id]:{};sh(`<h3>${id?'تعديل العميل':'عميل جديد'}</h3><input id=n class=in placeholder="الاسم" value="${esc(c.name)}"><input id=p class=in type=tel placeholder="الجوال (اختياري، لإرسال واتساب)" value="${esc(c.p)}"><input id=o class=in placeholder="ملاحظة" value="${esc(c.n)}"><button class="bt w" onclick="sc('${id||''}')">حفظ</button>${id?`<button class="bt o w rdb" onclick="dc('${id}')">أرشفة العميل</button>`:''}`)}
@@ -122,7 +127,23 @@ async function sync(manual){if(!db.m.email)return;if(busy){again=1;return}busy=1
 function bk(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({c:db.c,t:db.t})],{type:'application/json'}));a.download='mohasba-'+now().slice(0,10)+'.json';a.click()}
 async function rs(f){try{const j=JSON.parse(await f.text());Object.assign(db.c,j.c);Object.assign(db.t,j.t);ch();render();toast('تمت الاستعادة')}catch{toast('ملف غير صالح')}}
 
-render();
-addEventListener('online',()=>sync());document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});addEventListener('load',()=>setTimeout(()=>sync(),1200));
+/* ---------- Theme, PIN, Client ID ---------- */
+db.s=db.s||{};let L='',pm=null,tmp='',hid=0,locked=!!db.s.pin;
+function applyTh(){const t=db.s.th||'auto',d=t=='auto'?matchMedia('(prefers-color-scheme:dark)').matches:t=='dark';document.documentElement.dataset.th=d?'dark':'light';$('#tc').content=d?'#0b1110':'#f4f7f6'}
+function setTh(k){db.s.th=k;save();applyTh();render()}
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyTh);
+const secCard=()=>`<div class=card><h3>المظهر</h3><div class=r2>${[['auto','تلقائي'],['dark','داكن'],['light','فاتح']].map(([k,l])=>`<button class="bt${(db.s.th||'auto')==k?'':' o'}" onclick="setTh('${k}')">${l}</button>`).join('')}</div></div><div class=card><h3>الأمان</h3><p class=mu>رمز من 4 أرقام يُطلب عند فتح التطبيق وعند العودة إليه.</p><button class="bt o w" onclick="pm='${db.s.pin?'off':'set1'}';L='';lk()">${db.s.pin?'إلغاء رمز القفل':'تفعيل رمز القفل'}</button></div>`;
+const cidBox=()=>`<p class=mu>الخطوة الوحيدة المتبقية: الصق معرّف عميل Google (Client ID). وأضف هذا النطاق في Google Cloud ضمن Authorized JavaScript origins:</p><input class=in dir=ltr readonly value="${location.origin}" onclick="this.select()"><input id=cid class=in dir=ltr placeholder="xxxx.apps.googleusercontent.com"><button class="bt o w" onclick="svc()">حفظ المعرّف</button>`;
+function svc(){const v=$('#cid').value.trim();if(!/\.apps\.googleusercontent\.com$/.test(v))return toast('المعرّف غير صحيح');localStorage.setItem('mh_cid',v);CID=v;tc=null;toast('تم الحفظ، سجّل الدخول الآن');render()}
+const hx=async x=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mh'+x)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+function lk(msg=''){const m=locked?'unlock':pm;if(!m){$('#lk').innerHTML='';return}const T={unlock:'أدخل رمز القفل',off:'أدخل الرمز الحالي لإلغاء القفل',set1:'اختر رمزاً من 4 أرقام',set2:'أعد إدخال الرمز'}[m];
+ $('#lk').innerHTML=`<div class=lkb><h2>${T}</h2><div class=dots>${[0,1,2,3].map(i=>i<L.length?'●':'○').join(' ')}</div><p class=rd>${msg}</p><div class=kp>${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<i></i>':`<button onclick="kp('${k}')">${k}</button>`).join('')}</div>${locked?'':`<button class="bt o" onclick="pm=null;L='';lk()">إلغاء</button>`}</div>`}
+async function kp(d){if(d=='⌫')L=L.slice(0,-1);else if(L.length<4)L+=d;if(L.length<4)return lk();const m=locked?'unlock':pm,h=await hx(L);
+ if(m=='unlock'||m=='off'){if(h!=db.s.pin){L='';return lk('رمز خاطئ')}if(m=='off'){delete db.s.pin;save();toast('أُلغي القفل')}locked=false;pm=null;L='';lk();render();return}
+ if(m=='set1'){tmp=L;L='';pm='set2';return lk()}
+ if(m=='set2'){if(L!=tmp){L='';pm='set1';return lk('غير متطابق، أعد المحاولة')}db.s.pin=h;save();toast('تم تفعيل القفل');pm=null;L='';lk();render()}}
+addEventListener('keydown',e=>{if(!$('#lk').innerHTML)return;if(/^\d$/.test(e.key))kp(e.key);else if(e.key=='Backspace')kp('⌫')});
+applyTh();lk();render();
+addEventListener('online',()=>sync());document.addEventListener('visibilitychange',()=>{if(document.hidden){hid=Date.now();return}if(db.s.pin&&hid&&Date.now()-hid>3e4){locked=true;L='';lk()}sync()});addEventListener('load',()=>setTimeout(()=>sync(),1200));
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!sessionStorage.rl){sessionStorage.rl=1;location.reload()}})}
 </script></body></html>

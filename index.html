@@ -1,0 +1,128 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1110"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>المحاسبة</title>
+<style>
+:root{--bg:#0b1110;--cd:#141c1a;--ln:#24302d;--tx:#eef3f1;--mu:#8a9a95;--gr:#22c55e;--rd:#f87171}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,"Segoe UI",Tahoma,sans-serif;padding-bottom:84px}
+#app{max-width:560px;margin:auto;padding:max(14px,env(safe-area-inset-top)) 14px 0}
+.hd{display:flex;align-items:center;gap:8px;margin:6px 0 12px}.hd h1,.hd h3{flex:1;font-size:21px}.hd h3{font-size:16px}
+.card{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:14px;margin-bottom:12px}
+.hero{background:linear-gradient(135deg,#17352a,#141c1a)}
+small,.mu{color:var(--mu);font-size:12.5px}.big{font-size:34px;font-weight:700;direction:ltr;text-align:right}.big span{font-size:16px}
+.r2{display:flex;gap:10px;margin-top:10px}.r2>*{flex:1}.r2 b{display:block}
+.g{color:var(--gr)}.rd{color:var(--rd)}
+.bt{background:var(--gr);color:#06210f;border:0;border-radius:12px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.bt.o{background:none;color:var(--tx);border:1px solid var(--ln)}.bt.w{width:100%;margin-top:10px}.rdb{color:var(--rd)}
+.ic{background:var(--cd);color:var(--tx);border:1px solid var(--ln);border-radius:12px;width:40px;height:40px;font-size:17px;cursor:pointer}
+.in{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:12px;padding:12px;font:inherit;margin:6px 0}
+.row{display:flex;align-items:center;gap:12px;background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer}
+.row.vd{opacity:.45;text-decoration:line-through}.gr1{flex:1;min-width:0}.gr1 b,.gr1 small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av,.tb{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#1c2a25;color:var(--gr);font-weight:700}
+.tb.in{background:#14351f;color:var(--gr)}.tb.out{background:#3a1c1c;color:var(--rd)}
+.ta{text-align:left;direction:ltr}.ta b,.ta small{display:block}
+.bd{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sh{background:var(--cd);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px 16px max(18px,env(safe-area-inset-bottom));max-height:90vh;overflow:auto}.sh h3{margin-bottom:6px}
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--cd);border-top:1px solid var(--ln);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;color:var(--mu);padding:9px 0;font:inherit;font-size:12px;cursor:pointer}nav button span{display:block;font-size:20px}nav .on{color:var(--gr)}
+#toast{position:fixed;bottom:96px;inset-inline:0;text-align:center;pointer-events:none;z-index:30}#toast div{display:inline-block;background:#fff;color:#000;padding:9px 16px;border-radius:20px;font-size:13px}
+.emp{text-align:center;padding:26px 10px}.emp p{margin:6px 0 14px}
+#pa{display:none;color:#000;background:#fff;padding:24px;font-family:system-ui,Tahoma,sans-serif}#pa table{width:100%;border-collapse:collapse;margin:14px 0}#pa td,#pa th{border:1px solid #bbb;padding:6px;font-size:13px;text-align:right}#pa th{background:#eee}
+@media print{body>*:not(#pa){display:none!important}#pa{display:block}body{background:#fff;padding:0}}
+</style></head><body><div id="app"></div><div id="sheet"></div><div id="toast"></div><div id="pa"></div>
+<script src="config.js"></script><script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const $=s=>document.querySelector(s),CF=window.CFG||{},CUR=CF.CURRENCY||'ر.س',CID=CF.GOOGLE_CLIENT_ID,K='mh2',FN='المحاسبة - البيانات';
+const SC='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+let db=JSON.parse(localStorage.getItem(K)||'null')||{c:{},t:{},m:{}},S={tab:'c',cid:null,q:''},st='ok',tok,exp=0,tc,P,busy=0,again=0,tm;
+const save=()=>localStorage.setItem(K,JSON.stringify(db)),uid=()=>crypto.randomUUID(),now=()=>new Date().toISOString();
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money=a=>(a/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dt=s=>new Date(s).toLocaleString('ar-EG-u-nu-latn',{dateStyle:'medium',timeStyle:'short'});
+const loc=d=>new Date((d?+new Date(d):Date.now())-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16);
+const num=s=>Math.round(parseFloat(String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace('٫','.').replace(/[,،\s]/g,''))*100)||0;
+const asc=(a,b)=>a.d<b.d?-1:a.d>b.d?1:0,sg=x=>x.t=='in'?x.a:-x.a;
+const clients=()=>Object.values(db.c).filter(x=>!x.d),live=()=>Object.values(db.t).filter(x=>!x.v);
+const bal=c=>live().filter(x=>x.c==c).reduce((s,x)=>s+sg(x),0);
+const toast=m=>{$('#toast').innerHTML=`<div>${m}</div>`;setTimeout(()=>$('#toast').innerHTML='',2600)};
+const sh=h=>{$('#sheet').innerHTML=h?`<div class=bd onclick="if(event.target==this)sh()"><div class=sh>${h}</div></div>`:''};
+const ch=()=>{save();if(db.m.email){clearTimeout(tm);tm=setTimeout(()=>sync(),1500)}};
+const col=v=>v<0?'rd':'g';
+
+/* ---------- Views ---------- */
+const head=(t,r='')=>`<div class=hd><h1>${t}</h1>${r}</div>`;
+const chip=()=>`<button class=ic onclick="${db.m.email?'sync(1)':"S.tab='s';render()"}">${db.m.email?{ok:'✓',sync:'⟳',err:'⚠'}[st]:'☁'}</button>`;
+const nav=()=>`<nav>${[['c','👥','العملاء'],['t','📋','العمليات'],['s','⚙️','الإعدادات']].map(([k,i,l])=>`<button class="${S.tab==k&&!S.cid?'on':''}" onclick="S.tab='${k}';S.cid=null;render()"><span>${i}</span>${l}</button>`).join('')}</nav>`;
+function render(){$('#app').innerHTML=(S.cid?vClient():S.tab=='t'?vTx():S.tab=='s'?vSet():vClients())+nav()}
+function rows(){const L=clients().filter(c=>c.name.includes(S.q)||(c.p||'').includes(S.q));
+ return L.length?L.map(c=>{const b=bal(c.id);return `<div class=row onclick="S.cid='${c.id}';render()"><div class=av>${esc(c.name[0])}</div><div class=gr1><b>${esc(c.name)}</b><small>${esc(c.p)}</small></div><b class="${col(b)}" dir=ltr>${money(b)}</b></div>`}).join(''):`<div class="card emp"><b>ابدأ بإضافة أول عميل</b><p class=mu>لكل عميل سجل بعملياته ورصيده.</p><button class=bt onclick="nc()">+ عميل جديد</button></div>`}
+function vClients(){const m=now().slice(0,7);let a=0,o=0;live().forEach(x=>{if(loc(x.d).slice(0,7)==m)x.t=='in'?a+=x.a:o+=x.a});
+ const tot=clients().reduce((s,c)=>s+bal(c.id),0);
+ return head('المحاسبة',chip()+'<button class=bt onclick="nc()">+ عميل</button>')+`<div class="card hero"><small>إجمالي الأرصدة</small><div class=big>${money(tot)} <span>${CUR}</span></div><div class=r2><span><small>إضافات هذا الشهر</small><b class=g dir=ltr>+${money(a)}</b></span><span><small>سحوبات هذا الشهر</small><b class=rd dir=ltr>-${money(o)}</b></span></div></div>`+(clients().length>5?`<input class=in placeholder="بحث..." value="${esc(S.q)}" oninput="S.q=this.value;$('#lst').innerHTML=rows()">`:'')+`<div id=lst>${rows()}</div>`}
+function trow(x,r,nm){return `<div class="row ${x.v?'vd':''}" onclick="td('${x.id}')"><div class="tb ${x.t}">${x.t=='in'?'+':'−'}</div><div class=gr1><b>${esc(nm||x.n)||(x.t=='in'?'إضافة':'سحب')}</b><small>${dt(x.d)}${x.n&&nm?' · '+esc(x.n):''}${x.v?' · ملغاة':''}</small></div><div class=ta><b class="${x.t=='in'?'g':'rd'}">${x.t=='in'?'+':'-'}${money(x.a)}</b>${r==null?'':`<small>${money(r)}</small>`}</div></div>`}
+function vClient(){const c=db.c[S.cid];if(!c){S.cid=null;return vClients()}let r=0;
+ const T=Object.values(db.t).filter(x=>x.c==c.id).sort(asc).map(x=>(x.v||(r+=sg(x)),{...x,r}));
+ return `<div class=hd><button class=ic onclick="S.cid=null;render()">→</button><h1>${esc(c.name)}</h1><button class=ic onclick="nc('${c.id}')">✎</button></div><div class="card hero"><small>الرصيد الحالي</small><div class=big>${money(r)} <span>${CUR}</span></div><div class=r2><button class=bt onclick="nt('in')">+ إضافة</button><button class="bt o" onclick="nt('out')">− سحب</button></div></div>
+ <div class=card><input id=qe class=in dir=auto placeholder="إدخال سريع:  500+ دفعة فاتورة 1024   أو   250- مصروف" onkeydown="if(event.key=='Enter')qk()"><small>اكتب المبلغ ثم + للإضافة أو - للسحب ثم البيان، واضغط Enter.</small></div>
+ <div class=hd><h3>العمليات</h3><button class="bt o" onclick="shS()">مشاركة الكشف</button></div>`+(T.length?T.reverse().map(x=>trow(x,x.v?null:x.r)).join(''):'<p class="mu emp">لا توجد عمليات بعد</p>')}
+function vTx(){const T=Object.values(db.t).sort(asc).reverse();return head('العمليات',chip())+(T.length?T.map(x=>trow(x,null,db.c[x.c]?.name)).join(''):'<p class="mu emp">لا توجد عمليات</p>')}
+function vSet(){const m=db.m;return head('الإعدادات')+`<div class=card><h3>الحساب والمزامنة</h3>`+(m.email?`<p class=mu>متصل: <b>${esc(m.email)}</b><br>آخر مزامنة: ${m.ls?dt(m.ls):'—'}</p>${m.sid?`<a class="bt o w" target=_blank href="https://docs.google.com/spreadsheets/d/${m.sid}">فتح جدول Google Sheets</a>`:''}<button class="bt w" onclick="sync(1)">مزامنة الآن</button><button class="bt o w" onclick="lo()">تسجيل الخروج</button>`:`<p class=mu>سجّل الدخول بحساب Google ليُنشأ جدول بياناتك ويتزامن تلقائياً بين أجهزتك. لا حاجة لأي إعداد آخر.</p>${CID?'':'<p class=rd>لم يُضبط GOOGLE_CLIENT_ID في config.js</p>'}<button class="bt w" onclick="login()">تسجيل الدخول بحساب Google</button>`)+`</div><div class=card><h3>نسخ احتياطي</h3><button class="bt o w" onclick="bk()">حفظ نسخة (JSON)</button><label class="bt o w" style="display:block">استعادة نسخة<input type=file accept=.json hidden onchange="rs(this.files[0])"></label><button class="bt o w rdb" onclick="if(confirm('مسح بيانات هذا الجهاز؟ (بياناتك في Google Sheets تبقى)')){db={c:{},t:{},m:db.m};save();render()}">مسح بيانات هذا الجهاز</button></div>`}
+
+/* ---------- Clients & transactions ---------- */
+function nc(id){const c=id?db.c[id]:{};sh(`<h3>${id?'تعديل العميل':'عميل جديد'}</h3><input id=n class=in placeholder="الاسم" value="${esc(c.name)}"><input id=p class=in type=tel placeholder="الجوال (اختياري، لإرسال واتساب)" value="${esc(c.p)}"><input id=o class=in placeholder="ملاحظة" value="${esc(c.n)}"><button class="bt w" onclick="sc('${id||''}')">حفظ</button>${id?`<button class="bt o w rdb" onclick="dc('${id}')">أرشفة العميل</button>`:''}`)}
+function sc(id){const n=$('#n').value.trim();if(!n)return toast('الاسم مطلوب');id=id||uid();db.c[id]={id,name:n,p:$('#p').value.trim(),n:$('#o').value.trim(),d:0,u:now()};ch();sh();render()}
+function dc(id){if(!confirm('أرشفة العميل؟ تبقى عملياته محفوظة.'))return;db.c[id].d=1;db.c[id].u=now();ch();sh();S.cid=null;render()}
+function nt(t){sh(`<h3>${t=='in'?'إضافة':'سحب'}</h3><input id=a class=in inputmode=decimal placeholder="المبلغ" autofocus><input id=o class=in placeholder="البيان"><input id=d class=in type=datetime-local value="${loc()}"><button class="bt w" onclick="s2('${t}')">حفظ</button>`)}
+function addTx(c,t,a,n,d){if(!(a>0)){toast('أدخل مبلغاً صحيحاً');return false}const id=uid();db.t[id]={id,c,t,a,d:d||now(),n:n||'',v:0,r:'',u:now()};ch();render();return id}
+function s2(t){if(addTx(S.cid,t,num($('#a').value),$('#o').value.trim(),new Date($('#d').value||Date.now()).toISOString()))sh()}
+function qk(){const m=$('#qe').value.match(/^\s*([+\-−])?\s*([\d.٠-٩٫,]+)\s*([+\-−])?\s*(.*)$/);if(!m)return toast('مثال: 500+ دفعة');const s=m[1]||m[3];if(!s)return toast('حدد + أو -');addTx(S.cid,s=='+'?'in':'out',num(m[2]),m[4])}
+function td(id){const x=db.t[id],c=db.c[x.c];sh(`<h3>${x.t=='in'?'إضافة':'سحب'} ${money(x.a)} ${CUR}</h3><p class=mu>${esc(c.name)} · ${dt(x.d)}<br>${esc(x.n)}${x.v?'<br>ملغاة: '+esc(x.r):''}</p><button class="bt w" onclick="wt('${id}')">💬 إرسال عبر واتساب</button><button class="bt o w" onclick="pt('${id}')">🖨 PDF / طباعة</button>${x.v?'':`<button class="bt o w rdb" onclick="vo('${id}')">إلغاء العملية</button>`}`)}
+function vo(id){const r=prompt('سبب الإلغاء؟ (تبقى العملية في السجل للتدقيق)');if(r===null)return;Object.assign(db.t[id],{v:1,r:r||'—',u:now()});ch();sh();render()}
+
+/* ---------- Share ---------- */
+const wa=(p,t)=>{p=(p||'').replace(/\D/g,'');if(p.startsWith('00'))p=p.slice(2);else if(p.startsWith('0'))p='966'+p.slice(1);open('https://wa.me/'+p+'?text='+encodeURIComponent(t))};
+const balAt=x=>live().filter(y=>y.c==x.c&&(y.d<x.d||y.id==x.id)).reduce((s,y)=>s+sg(y),0);
+const rcT=x=>`${x.t=='in'?'إيصال إضافة':'إيصال سحب'}\nالعميل: ${db.c[x.c].name}\nالمبلغ: ${money(x.a)} ${CUR}\nالتاريخ: ${dt(x.d)}${x.n?'\nالبيان: '+x.n:''}\nالرصيد بعد العملية: ${money(balAt(x))} ${CUR}`;
+const wt=id=>wa(db.c[db.t[id].c].p,rcT(db.t[id]));
+const pr=h=>{$('#pa').innerHTML=h;setTimeout(()=>print(),60)};
+const pt=id=>{const x=db.t[id];pr(`<h2>${x.t=='in'?'إيصال إضافة':'إيصال سحب'}</h2><p>العميل: <b>${esc(db.c[x.c].name)}</b></p><p>المبلغ: <b>${money(x.a)} ${CUR}</b></p><p>التاريخ: ${dt(x.d)}</p><p>البيان: ${esc(x.n)}</p><p>الرصيد بعد العملية: ${money(balAt(x))} ${CUR}</p>`)};
+function stL(c){const f=$('#f')?.value,e=$('#e')?.value;let r=0,o=0,L=[];Object.values(db.t).filter(x=>x.c==c.id&&!x.v).sort(asc).forEach(x=>{const k=loc(x.d).slice(0,10);r+=sg(x);if(f&&k<f){o=r;return}if(e&&k>e){r-=sg(x);return}L.push({...x,r})});return{L,o,r:L.length?L[L.length-1].r:o}}
+function shS(){sh(`<h3>مشاركة كشف الحساب</h3><small>الفترة (اتركها فارغة لكل العمليات)</small><div class=r2><input id=f class=in type=date><input id=e class=in type=date></div><button class="bt w" onclick="sw()">💬 إرسال نصاً عبر واتساب</button><button class="bt o w" onclick="sp()">🖨 حفظ PDF / طباعة</button>`)}
+function sw(){const c=db.c[S.cid],{L,o,r}=stL(c);wa(c.p,`كشف حساب — ${c.name}\n${dt(now())}\n──────\n`+(o?`رصيد سابق: ${money(o)}\n`:'')+L.map(x=>`${dt(x.d)}\n${x.t=='in'?'＋':'－'} ${money(x.a)}${x.n?' · '+x.n:''}  ←  ${money(x.r)}`).join('\n')+`\n──────\nالرصيد: ${money(r)} ${CUR}`)}
+function sp(){const c=db.c[S.cid],{L,o,r}=stL(c);pr(`<h2>كشف حساب — ${esc(c.name)}</h2><p>${dt(now())}</p><table><tr><th>التاريخ<th>البيان<th>إضافة<th>سحب<th>الرصيد</tr>${o?`<tr><td colspan=4>رصيد سابق<td>${money(o)}`:''}${L.map(x=>`<tr><td>${dt(x.d)}<td>${esc(x.n)}<td>${x.t=='in'?money(x.a):''}<td>${x.t=='out'?money(x.a):''}<td>${money(x.r)}`).join('')}</table><h3>الرصيد: ${money(r)} ${CUR}</h3>`)}
+
+/* ---------- Google: sign-in + Sheets sync ---------- */
+function getTok(){if(tok&&Date.now()<exp)return Promise.resolve(tok);
+ return new Promise((ok,no)=>{if(!CID)return no(new Error('لم يُضبط GOOGLE_CLIENT_ID'));if(!window.google)return no(new Error('تعذّر تحميل Google (لا اتصال؟)'));P={ok,no};
+  tc=tc||google.accounts.oauth2.initTokenClient({client_id:CID,scope:SC,callback:r=>r.error?P.no(new Error(r.error)):P.ok(r),error_callback:e=>P.no(new Error(e.type))});
+  tc.requestAccessToken({prompt:'',login_hint:db.m.email||''})}).then(r=>{tok=r.access_token;exp=Date.now()+(r.expires_in-60)*1e3;return tok})}
+async function G(u,o={},retry=1){const t=await getTok(),r=await fetch(u,{...o,headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'}});
+ if(r.status==401&&retry){tok=null;return G(u,o,0)}if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,100));return r.json()}
+async function login(){try{await getTok();const u=await G('https://www.googleapis.com/oauth2/v3/userinfo');db.m.email=u.email;save();render();await sync(1)}catch(e){toast('تعذّر تسجيل الدخول: '+e.message)}}
+function lo(){if(tok&&window.google)google.accounts.oauth2.revoke(tok);tok=null;db.m={};save();render()}
+async function sync(manual){if(!db.m.email)return;if(busy){again=1;return}busy=1;st='sync';if(manual)render();
+ const SB='https://sheets.googleapis.com/v4/spreadsheets';
+ try{
+  if(!db.m.sid){const f=await G('https://www.googleapis.com/drive/v3/files?fields=files(id)&q='+encodeURIComponent(`name='${FN}' and trashed=false and mimeType='application/vnd.google-apps.spreadsheet'`));
+   db.m.sid=f.files[0]?.id;if(!db.m.sid){const s=await G(SB,{method:'POST',body:JSON.stringify({properties:{title:FN,locale:'ar'},sheets:['Clients','Transactions','Balances'].map(title=>({properties:{title,rightToLeft:true}}))})});db.m.sid=s.spreadsheetId}}
+  const B=`${SB}/${db.m.sid}`,R=await G(`${B}/values:batchGet?ranges=Clients!A2:F&ranges=Transactions!A2:J&valueRenderOption=UNFORMATTED_VALUE`);
+  const [rc,rt]=R.valueRanges.map(v=>v.values||[]);
+  rc.forEach(([id,name,p,n,u,d])=>{if(!id)return;const l=db.c[id];if(!l||String(u)>l.u)db.c[id]={id,name:String(name||''),p:String(p||''),n:String(n||''),u:String(u),d:+d||0}});
+  rt.forEach(([id,date,c,,ty,a,n,v,vr,u])=>{if(!id)return;const l=db.t[id];if(!l||String(u)>l.u)db.t[id]={id,c,t:ty=='سحب'?'out':'in',a:Math.round((+a||0)*100),d:String(date),n:String(n||''),v:+v||0,r:String(vr||''),u:String(u)}});
+  const CV=[['المعرّف','الاسم','الجوال','ملاحظة','آخر تحديث','مؤرشف'],...Object.values(db.c).map(x=>[x.id,x.name,x.p,x.n,x.u,x.d])];
+  const TV=[['المعرّف','التاريخ','معرّف العميل','العميل','النوع','المبلغ','البيان','ملغاة','سبب الإلغاء','آخر تحديث'],...Object.values(db.t).sort(asc).map(x=>[x.id,x.d,x.c,db.c[x.c]?.name||'',x.t=='in'?'إضافة':'سحب',x.a/100,x.n,x.v,x.r,x.u])];
+  const SU=(i,t)=>`=SUMIFS(Transactions!$F:$F,Transactions!$C:$C,B${i},Transactions!$E:$E,"${t}",Transactions!$H:$H,0)`;
+  const BV=[['العميل','المعرّف','إضافات','سحوبات','الرصيد'],...clients().map((x,i)=>[x.name,x.id,SU(i+2,'إضافة'),SU(i+2,'سحب'),`=C${i+2}-D${i+2}`])];
+  await G(`${B}/values:batchClear`,{method:'POST',body:JSON.stringify({ranges:['Clients','Transactions','Balances']})});
+  await G(`${B}/values:batchUpdate`,{method:'POST',body:JSON.stringify({valueInputOption:'RAW',data:[{range:'Clients!A1',values:CV},{range:'Transactions!A1',values:TV}]})});
+  await G(`${B}/values:batchUpdate`,{method:'POST',body:JSON.stringify({valueInputOption:'USER_ENTERED',data:[{range:'Balances!A1',values:BV}]})});
+  db.m.ls=now();st='ok';save();
+ }catch(e){st='err';if(/^404/.test(e.message))db.m.sid=null;if(manual)toast('فشلت المزامنة: '+e.message)}
+ busy=0;render();if(again){again=0;sync()}}
+
+/* ---------- Backup ---------- */
+function bk(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({c:db.c,t:db.t})],{type:'application/json'}));a.download='mohasba-'+now().slice(0,10)+'.json';a.click()}
+async function rs(f){try{const j=JSON.parse(await f.text());Object.assign(db.c,j.c);Object.assign(db.t,j.t);ch();render();toast('تمت الاستعادة')}catch{toast('ملف غير صالح')}}
+
+render();
+addEventListener('online',()=>sync());document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});addEventListener('load',()=>setTimeout(()=>sync(),1200));
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
